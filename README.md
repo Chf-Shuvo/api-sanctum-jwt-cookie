@@ -1,64 +1,97 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400"></a></p>
+# Installation
+    # git clone
+    # create database 
+    # import the sql file
+# Documentation
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Create a new controller
+    php artisan make:controller API/AuthController
+## Modify the user table
+    keep name, email, password only
+## Migrate the tables
+    php artisan migrate
+## Modify the User Model
+    Remove unnecessary fields
+## Modify RouteServiceProvider if needed
+    This is to remove prefix that shows 'api' in the URL. You can either change it to 'api/v.1/' or you can completely remove it. 
+## Create routes is api.php
+    See api.php for all the routes
+## Create methods in AuthController
+    See API/AuthController for all the methods
+## Sending the first request through PostMan
+    Post > URL > {{ base_path }}/{prefix}/url
 
-## About Laravel
+    Postman > Body > raw + JSON
+## When you add login system check the following things
+    # If you are doing it with laravel 8 or later "Sanctum" is already installed and you have the "personal_access_token" table in your database. 
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+    # If you are using laravel<8 then install sanctum. 
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+    # User Model has that HasApiTokens traits enabled, if not then enable it
+## If the user is not unauthenticated
+    > return a response with Response Code
+    > check the AuthController : Response::HTTP_UNAUTHORIZED is a Response library which lets you use direct named response instead of codes[201,200,401].
+## Create token if authenticated
+    $token = $user->createToken('jwt')->plainTextToken;
+## Undefined Method createToken()
+    This happens if you have installed PHP Intelliphense/Intellisense VsCode. To solve this problem install this IDE Helper Package:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+    >https://github.com/barryvdh/laravel-ide-helper#automatic-PHPDocs-for-models
+## Creating "Cookies"
+    We are not storing the "Token" in the frontEnd, so we are creating "cookies" to store the "JWT" tokens in the session. 
+## Create a cookie
+    cookie('name',$value,time);
+## Now we will send the cookie in the session as a response
+    return response([
+        'message' => 'success'
+    ])->withCookie($cookie);
+## If you are using a frontEnd then set cors.php
+    'supports_credentials' => true
+## Retrieve the logged user data
+    > create user route in api.php
+    > create method to retrieve user
+    > add middleware to routes that are protected ['auth:sanctum]
+## to get better validation message
+    > in Postman add this header and value
+    > X-Requested-With : XMLHttpRequest
+## Usage of the "Token"
+    We can use that token by returning it via the response. Then in the postman 
+    > Authorization: Bearer $token
 
-## Learning Laravel
+    But we are not giving the user the token so that it gets stored in the frontEnd. What we will do is, we will fake it so that the token gets shared in all upcoming requests after logging in. 
+# Faking the $token 
+##  Overwrite the "handle" function from "Authenticate.php" from "Vendor" to "Middleware"
+### From this 
+    public function handle($request, Closure $next, ...$guards)
+    {
+        $this->authenticate($request, $guards);
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+        return $next($request);
+    }
+### To this
+    use Closure;
+    public function handle($request, Closure $next, ...$guards)
+    {
+        // we are retrieving the jwt token from the cookie and adding it to the header as Authorization Bearer
+        if($jwt = $request->cookie('jwt')){
+            $request->headers->set('Authorization','Bearer '.$jwt);
+        }
+        $this->authenticate($request, $guards);
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 1500 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+        return $next($request);
+    }
+## Logout
+    > Create a logout route as post route
 
-## Laravel Sponsors
+    public function logout(){
+        $cookie = Cookie::forget('jwt');
+        return response([
+            'message' => 'success'
+        ])->withCookie($cookie);
+    }
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
 
-### Premium Partners
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[CMS Max](https://www.cmsmax.com/)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
 
-## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
 
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
